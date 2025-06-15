@@ -1,85 +1,30 @@
-import requests
-import configparser as parser
-import json
-import asyncio
-import time
-
-#접속키의 유효기간은 24시간이지만, 접속키는 세션 연결 시 초기 1회만 사용하기 때문에 접속키 인증 후에는 세션종료되지 않는 이상 접속키 신규 발급받지 않으셔도 365일 내내 웹소켓 데이터 수신하실 수 있습니다.
-class ApprovalClient:
-    def __init__(self):
-        ###접속 정보 설정
-        self.appkey, self.secretkey, self.base_url, self.end_url = self.read_conf(r'D:\tool\work_space\websocket\setting\setting.ini')
-
-    #경로를 넘겨 받아 setting.ini를 읽어오는 메서드
-    def read_conf(self, ini_path: str) -> list:
-        config = parser.ConfigParser(inline_comment_prefixes = ('#', ';')) #inline_comment_prefixes 를 지정하지 않으면 '#' or ';'로 시작하는 경우를 제외하고 값 뒤에 오는 주석을 인식 못 함
-        with open(ini_path, 'r', encoding = 'utf-8') as f: #한글 주석을 인식하기 위한 옵션
-            config.read_file(f)
-
-        appkey = config['approval']['appkey']
-        secretkey = config['approval']['secretkey']
-        base_url = config['approval']['base_url']
-        end_url = config['approval']['end_url']
-
-        return appkey, secretkey, base_url, end_url
-
-    #content_type, grant_type, appkey, secretkey, base_url, end_url을 넘겨 받아 api를 호출하는 메서드
-    def get_approval(self, appkey, secretkey, base_url, end_url):
-        headers = {
-            "content-type":"application/json"
-        }
-        body = {
-             "grant_type":"client_credentials"
-            ,"appkey":appkey
-            ,"secretkey":secretkey
-        }
-
-        #api 호출
-        try:
-            time.sleep(0.05)
-            response = requests.post(f'{base_url}{end_url}', headers = headers, data = json.dumps(body))
-            print(response.status_code) #코드 확인
-            print(response.text) #값 확인
-            res = response.json() #전체 값을 json 형태로 파싱
-            
-            return res['approval_key'] #그 중 approval_key 에 해당하는 값만 돌려준다
-        except Exception as e:
-            print(f"  종류: {type(e).__name__}")
-            print(f"  메시지: {str(e)}")
-
-
-
-
-class StockExecutionPrice:
-    def __init__(self, key):
-        ###접속 정보 설정
-        self.key = key
-        self.custtype, self.tr_type, self.base_url, self.end_url = self.read_conf(r'D:\tool\work_space\websocket\setting\setting.ini')
-
-    #경로를 넘겨 받아 setting.ini를 읽어오는 메서드
-    def read_conf(self, ini_path: str) -> list:
-        config = parser.ConfigParser(inline_comment_prefixes = ('#', ';')) #inline_comment_prefixes 를 지정하지 않으면 '#' or ';'로 시작하는 경우를 제외하고 값 뒤에 오는 주석을 인식 못 함
-        with open(ini_path, 'r', encoding = 'utf-8') as f: #한글 주석을 인식하기 위한 옵션
-            config.read_file(f)
-
-        custtype = config['H0STCNT0']['custtype']
-        tr_type = config['H0STCNT0']['tr_type']
-        base_url = config['H0STCNT0']['base_url']
-        end_url = config['H0STCNT0']['end_url']
-
-        return custtype, tr_type, base_url, end_url
-    
-
-
-def main():
-    #Approval_key
-    app = ApprovalClient()
-    Approval_key = app.get_approval(app.appkey, app.secretkey, app.base_url, app.end_url)
-
-
-if __name__ == '__main__':
-    main()
-
-
-
-
+#데이터 종류에 따라 컬럼 종류가 달라짐
+TR_HEADERS = {
+    #국내주식 실시간 호가
+    'H0STASP0': [
+        '유가증권 단축 종목코드', '영업시간', '시간구분코드',
+        '매도호가01', '매도호가02', '매도호가03', '매도호가04', '매도호가05', '매도호가06', '매도호가07', '매도호가08', '매도호가09', '매도호가10',
+        '매수호가01', '매수호가02', '매수호가03', '매수호가04', '매수호가05', '매수호가06', '매수호가07', '매수호가08', '매수호가09', '매수호가10',
+        '매도호가잔량01', '매도호가잔량02', '매도호가잔량03', '매도호가잔량04', '매도호가잔량05', '매도호가잔량06', '매도호가잔량07', '매도호가잔량08', '매도호가잔량09', '매도호가잔량10',
+        '매수호가잔량01', '매수호가잔량02', '매수호가잔량03', '매수호가잔량04', '매수호가잔량05', '매수호가잔량06', '매수호가잔량07', '매수호가잔량08', '매수호가잔량09', '매수호가잔량10',
+        '총매도호가 잔량', '총매수호가 잔량', '시간외 총매도호가 잔량', '시간외 총매수호가 잔량',
+        '예상 체결가', '예상 체결량', '예상 거래량', '예상체결 대비', '부호', '예상체결 전일대비율',
+        '누적거래량', '총매도호가 잔량 증감', '총매수호가 잔량 증감', '시간외 총매도호가 잔량 증감', '시간외 총매수호가 잔량 증감',
+        '주식매매 구분코드'
+    ],
+    #국내주식 실시간 체결가
+    'H0STCNT0': [
+        '유가증권단축종목코드','주식체결시간','주식현재가','전일대비부호','전일대비','전일대비율','가중평균주식가격','주식시가','주식최고가','주식최저가',
+        '매도호가1','매수호가1','체결거래량','누적거래량','누적거래대금','매도체결건수','매수체결건수','순매수체결건수','체결강도','총매도수량','총매수수량',
+        '체결구분','매수비율','전일거래량대비등락율','시가시간','시가대비구분','시가대비','최고가시간','고가대비구분','고가대비','최저가시간','저가대비구분','저가대비',
+        '영업일자','신장운영구분코드','거래정지여부','매도호가잔량','매수호가잔량','총매도호가잔량','총매수호가잔량','거래량회전율','전일동시간누적거래량','전일동시간누적거래량비율',
+        '시간구분코드','임의종료구분코드','정적VI발동기준가'
+    ],
+    #국내주식 실시간 예상체결가
+    'H0STANC0': [
+        '유가증권단축종목코드','주식체결시간','주식현재가','전일대비구분','전일대비','등락율','가중평균주식가격','시가','고가','저가','매도호가','매수호가','거래량','누적거래량',
+        '누적거래대금','매도체결건수','매수체결건수','순매수체결건수','체결강도','총매도수량','총매수수량','체결구분','매수비율','전일거래량대비등락율','시가시간','시가대비구분',
+        '시가대비','최고가시간','고가대비구분','고가대비','최저가시간','저가대비구분','저가대비','영업일자','신장운영구분코드','거래정지여부','매도호가잔량1','매수호가잔량1',
+        '총매도호가잔량','총매수호가잔량','거래량회전율','전일동시간누적거래량','전일동시간누적거래량비율','시간구분코드','임의종료구분코드'
+    ]
+}
